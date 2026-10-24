@@ -43,7 +43,8 @@
                 <div class="form-alert">{{ message }}</div>
             {% endfor %}
 
-            <form method="POST" class="library-form">
+            <form method="POST" class="library-form" enctype="multipart/form-data">
+            
 
                 <div class="form-group">
                     <label for="title">Book Title</label>
@@ -105,6 +106,32 @@
                     {% endif %}
                 </div>
 
+                <div class="form-group">
+    <label for="image">Book Cover</label>
+
+    {% if book and book.image_url %}
+        <div class="current-image">
+            <p>Current cover:</p>
+            <img
+                src="{{ url_for('static', filename=book.image_url) }}"
+                alt="Current book cover"
+                style="width: 100px; height: 140px; object-fit: contain;"
+            >
+        </div>
+    {% endif %}
+
+    <input
+        id="image"
+        name="image"
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,.gif"
+    >
+
+    <small>
+        Optional. Choose a JPG, PNG, WEBP, or GIF image.
+        Leave empty to keep the current cover when editing.
+    </small>
+</div>
                 <div class="form-actions">
                     <a href="{{ url_for('index') }}" class="cancel-button">
                         Cancel

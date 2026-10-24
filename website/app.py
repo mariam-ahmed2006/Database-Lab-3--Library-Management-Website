@@ -1,9 +1,10 @@
-
 from flask import Flask, render_template, request, redirect, url_for, flash
 import pymysql
 import os
+import uuid
 from decimal import Decimal, InvalidOperation
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -20,6 +21,37 @@ def get_db():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+
+def save_uploaded_image(field_name):
+    image = request.files.get(field_name)
+
+    if not image or image.filename == "":
+        return None
+
+    original_name = secure_filename(image.filename)
+
+    if "." not in original_name:
+        raise ValueError("Please upload a valid image file.")
+
+    extension = original_name.rsplit(".", 1)[1].lower()
+
+    if extension not in ALLOWED_EXTENSIONS:
+        raise ValueError(
+            "Only JPG, JPEG, PNG, WEBP, and GIF images are allowed."
+        )
+
+    image_folder = os.path.join(
+        app.root_path, "static", "images"
+    )
+    os.makedirs(image_folder, exist_ok=True)
+
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    image_path = os.path.join(image_folder, filename)
+
+    image.save(image_path)
+
+    return f"images/{filename}"
 
 
 @app.route("/")
@@ -81,7 +113,6 @@ def index():
         db.close()
 
 
-
 @app.route("/authors/add", methods=["GET", "POST"])
 def add_author():
     if request.method == "POST":
@@ -92,12 +123,19 @@ def add_author():
             flash("Name and country are required.")
             return redirect(url_for("add_author"))
 
+        try:
+            image_url = save_uploaded_image("image")
+        except ValueError as error:
+            flash(str(error))
+            return redirect(url_for("add_author"))
+
         db = get_db()
         try:
             with db.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO AUTHOR (name, country) VALUES (%s, %s)",
-                    (name, country)
+                    """INSERT INTO AUTHOR (name, country, image_url)
+                       VALUES (%s, %s, %s)""",
+                    (name, country, image_url)
                 )
             db.commit()
         finally:
@@ -107,6 +145,8 @@ def add_author():
         return redirect(url_for("index"))
 
     return render_template("author_form.html", author=None)
+
+
 
 
 @app.route("/authors/edit/<int:author_id>", methods=["GET", "POST"])
@@ -133,13 +173,25 @@ def edit_author(author_id):
                         url_for("edit_author", author_id=author_id)
                     )
 
+                try:
+                    new_image_url = save_uploaded_image("image")
+                except ValueError as error:
+                    flash(str(error))
+                    return redirect(
+                        url_for("edit_author", author_id=author_id)
+                    )
+
+                # Keep the current photo if no new one was uploaded
+                image_url = new_image_url or author.get("image_url")
+
                 cursor.execute(
                     """UPDATE AUTHOR
-                       SET name = %s, country = %s
+                       SET name = %s, country = %s, image_url = %s
                        WHERE author_id = %s""",
-                    (name, country, author_id)
+                    (name, country, image_url, author_id)
                 )
                 db.commit()
+
                 flash("Author updated successfully.")
                 return redirect(url_for("index"))
 
@@ -181,10 +233,17 @@ def add_book():
                     flash("Please select an existing author.")
                     return redirect(url_for("add_book"))
 
+                try:
+                    image_url = save_uploaded_image("image")
+                except ValueError as error:
+                    flash(str(error))
+                    return redirect(url_for("add_book"))
+
                 cursor.execute(
-                    """INSERT INTO BOOK (title, price, author_id)
-                       VALUES (%s, %s, %s)""",
-                    (title, price, author_id)
+                    """INSERT INTO BOOK
+                       (title, price, author_id, image_url)
+                       VALUES (%s, %s, %s, %s)""",
+                    (title, price, author_id, image_url)
                 )
                 db.commit()
                 flash("Book added successfully.")
@@ -197,13 +256,16 @@ def add_book():
         db.close()
 
 
+
+
 @app.route("/books/edit/<int:book_id>", methods=["GET", "POST"])
 def edit_book(book_id):
     db = get_db()
     try:
         with db.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM BOOK WHERE book_id = %s", (book_id,)
+                "SELECT * FROM BOOK WHERE book_id = %s",
+                (book_id,)
             )
             book = cursor.fetchone()
 
@@ -244,13 +306,28 @@ def edit_book(book_id):
                         url_for("edit_book", book_id=book_id)
                     )
 
+                try:
+                    new_image_url = save_uploaded_image("image")
+                except ValueError as error:
+                    flash(str(error))
+                    return redirect(
+                        url_for("edit_book", book_id=book_id)
+                    )
+
+                # Keep the current cover if no new image was uploaded
+                image_url = new_image_url or book.get("image_url")
+
                 cursor.execute(
                     """UPDATE BOOK
-                       SET title = %s, price = %s, author_id = %s
+                       SET title = %s,
+                           price = %s,
+                           author_id = %s,
+                           image_url = %s
                        WHERE book_id = %s""",
-                    (title, price, author_id, book_id)
+                    (title, price, author_id, image_url, book_id)
                 )
                 db.commit()
+
                 flash("Book updated successfully.")
                 return redirect(url_for("index"))
 
@@ -259,6 +336,7 @@ def edit_book(book_id):
             )
     finally:
         db.close()
+
 
 
 @app.route("/books/delete/<int:book_id>", methods=["POST"])

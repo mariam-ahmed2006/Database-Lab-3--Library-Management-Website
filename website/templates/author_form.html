@@ -44,7 +44,7 @@
                 <div class="form-alert">{{ message }}</div>
             {% endfor %}
 
-            <form method="POST" class="library-form">
+            <form method="POST" class="library-form" enctype="multipart/form-data">
 
                 <div class="form-group">
                     <label for="name">Author's Full Name</label>
@@ -74,6 +74,32 @@
                     <small>Enter the author's country of origin.</small>
                 </div>
 
+<div class="form-group">
+    <label for="image">Author Photo</label>
+
+    {% if author and author.image_url %}
+        <div class="current-image">
+            <p>Current photo:</p>
+            <img
+                src="{{ url_for('static', filename=author.image_url) }}"
+                alt="Photo of {{ author.name }}"
+                style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%;"
+            >
+        </div>
+    {% endif %}
+
+    <input
+        id="image"
+        name="image"
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,.gif"
+    >
+
+    <small>
+        Optional. Choose a JPG, PNG, WEBP, or GIF image.
+        Leave empty to keep the current photo when editing.
+    </small>
+</div>
                 <div class="form-actions">
                     <a href="{{ url_for('index') }}" class="cancel-button">
                         Cancel
