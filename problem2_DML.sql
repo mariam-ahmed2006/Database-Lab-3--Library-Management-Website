@@ -4,7 +4,7 @@ USE library;
 INSERT INTO AUTHOR (name, country, image_url)
 VALUES
     ('Naguib Mahfouz', 'Egypt', 'images/Naguib Mahfouz.jpg'),
-    ('J.K. Rowling', 'United Kingdom', 'images/J K Rowling.jpg'),
+    ('J.K. Rowling', 'United Kingdom', 'images/J.K. Rowling.jpg'),
     ('George Orwell', 'United Kingdom', 'images/George Orwell.jpg');
 
 -- Insert books with their cover paths

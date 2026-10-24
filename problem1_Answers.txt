@@ -1,38 +1,39 @@
 
-Q1.1 - Deleting a referenced employee
+## Q1.1 – Deleting a referenced employee
 
-SQL:
-DELETE FROM EMPLOYEE WHERE ssn = '100000001';
+**SQL:**
+```sql
+DELETE FROM EMPLOYEE
+WHERE ssn = '100000001';
+```
 
-Expected result:
-The deletion is rejected because DEPARTMENT.mgr_ssn
-references this employee. The foreign-key constraint
-preserves referential integrity.
+**Expected result:** The deletion is rejected because employee `100000001` is referenced by `DEPARTMENT.mgr_ssn`. The foreign key preserves referential integrity.
 
-Actual output:
-[Paste the error or output from MySQL Workbench here.]
+**Actual output:**
+```text
+Error Code: 1451. Cannot delete or update a parent row: a foreign key constraint fails (`company`.`department`, CONSTRAINT `fk_department_manager` FOREIGN KEY (`mgr_ssn`) REFERENCES `employee` (`ssn`))
+```
 
 
-Q1.2 - Inserting a project for a nonexistent department
 
-SQL:
+## Q1.2 – Inserting a project for a nonexistent department
+
+**SQL:**
+```sql
 INSERT INTO PROJECT
 (Pnumber, Pname, Plocation, Dno)
 VALUES (104, 'Unknown Project', 'Alexandria', 99);
 
-Expected result:
-The insertion is rejected because department 99 does
-not exist in DEPARTMENT.
+**Expected result:** The insertion is rejected because department `99` does not exist in the `DEPARTMENT` table referenced by `PROJECT.Dno`.
 
-Actual output:
-[Paste the error or output from MySQL Workbench here.]
+**Actual output:**
 
+Error Code: 1452. Cannot add or update a child row: a foreign key constraint fails (`company`.`project`, CONSTRAINT `fk_project_department` FOREIGN KEY (`Dno`) REFERENCES `department` (`Dnumber`))
 
-Q1.3 - Both mgr_ssn and Dno are NOT NULL
+## Q1.3 – Both `mgr_ssn` and `Dno` are NOT NULL
+**Answer:**
+There is a circular dependency between the `EMPLOYEE` and `DEPARTMENT` tables. An employee must belong to an existing department because `EMPLOYEE.Dno` is a foreign key referencing `DEPARTMENT.Dnumber`. At the same time, each department must have a manager because `DEPARTMENT.mgr_ssn` is a foreign key referencing `EMPLOYEE.ssn`.
 
-Answer:
-There is a circular dependency. An employee needs an
-existing department, and a department needs an existing
-employee as manager. We can allow mgr_ssn to be NULL
-initially, insert the records, and then update the manager.
-MySQL does not support deferred foreign-key checking.
+If both `Dno` and `mgr_ssn` are `NOT NULL`, we cannot insert the first employee or department because each requires a record in the other table to exist first.
+
+**Solution:** We can temporarily allow `mgr_ssn` to accept `NULL`. First, insert the department without a manager, then insert the employee belonging to that department, and finally update the department to assign the employee as its manager. This resolves the circular dependency while preserving the foreign-key relationships.
